@@ -13,12 +13,14 @@ var skippedReceivers = uint64(0)
 // stored inside.
 type ConnectionSpawner interface {
 	SpawnOutgoing(ip int32) chan Connection
+	Close()
 }
 
 type ConnectionSpawnerImpl struct {
 	mu                sync.Mutex
 	times             map[ipAddress]int
 	connectionFactory func() Connection
+	closed            int32
 }
 
 func NewConnectionSpawner(connectionFactory func() Connection) *ConnectionSpawnerImpl {
@@ -33,11 +35,20 @@ func (a *ConnectionSpawnerImpl) SpawnOutgoing(ip int32) chan Connection {
 	defer a.mu.Unlock()
 
 	ch := make(chan Connection, 1)
+	// No real actions when we closed.
+	if atomic.LoadInt32(&a.closed) == 1 {
+		ch <- &ClosedConnection{}
+		return ch
+	}
 
 	if a.times[ip] == 0 {
 		go func() {
 			c := a.connectionFactory()
 			c.Open()
+			if atomic.LoadInt32(&a.closed) == 1 {
+				c.Close()
+				return
+			}
 			a.mu.Lock()
 			times := a.times[ip]
 			for i := 0; i <= times; i++ {
@@ -56,4 +67,8 @@ func (a *ConnectionSpawnerImpl) SpawnOutgoing(ip int32) chan Connection {
 	}
 
 	return ch
+}
+
+func (a *ConnectionSpawnerImpl) Close() {
+	atomic.StoreInt32(&a.closed, 1)
 }

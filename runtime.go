@@ -15,6 +15,8 @@ type P2pRuntime struct {
 	ip2conn map[ipAddress]Connection
 	// Keep sync.
 	mu sync.Mutex
+	// Flag that runtime stopped.
+	stopped bool
 }
 
 // Creates new P2pRuntime.
@@ -37,6 +39,9 @@ func (a *P2pRuntime) GetConnection(ip ipAddress) Connection {
 
 func (a *P2pRuntime) addConnection(ip ipAddress, conn Connection) {
 	a.mu.Lock()
+	if a.stopped {
+		return
+	}
 	a.ip2conn[ip] = conn
 	a.mu.Unlock()
 }
@@ -63,6 +68,8 @@ func (a *P2pRuntime) OnNewRemoteConnection(ip ipAddress, conn Connection) {
 // Closes all connections.
 func (a *P2pRuntime) Shutdown() {
 	a.mu.Lock()
+	a.stopped = true
+	a.spawner.Close()
 	for _, conn := range a.ip2conn {
 		conn.Close()
 	}

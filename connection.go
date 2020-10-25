@@ -24,3 +24,16 @@ func (ConnectionImpl) Open() {}
 func NewConnection() Connection {
 	return &ConnectionImpl{}
 }
+
+type ClosedConnection struct {
+}
+
+func (a *ClosedConnection) Close() {
+}
+
+func (a ClosedConnection) Closed() bool {
+	return true
+}
+
+func (a ClosedConnection) Open() {
+}

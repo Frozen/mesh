@@ -97,3 +97,18 @@ func TestSequentialConnections(t *testing.T) {
 
 	require.True(t, time.Now().Sub(now) > 2*time.Second)
 }
+
+func TestConnectionsOnShutdownRuntime(t *testing.T) {
+	var (
+		spawner = NewConnectionSpawner(func() Connection {
+			return &connectionMock{
+				timeout: 1 * time.Second,
+			}
+		})
+	)
+	r := NewP2pRuntime(spawner)
+	r.Shutdown()
+	c1 := r.GetConnection(123)
+
+	require.True(t, c1.Closed())
+}
