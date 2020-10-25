@@ -4,4 +4,23 @@ package mesh
 type Connection interface {
 	Close()
 	Closed() bool
+	Open()
+}
+
+type ConnectionImpl struct {
+	closed bool
+}
+
+func (a *ConnectionImpl) Close() {
+	a.closed = true
+}
+
+func (a ConnectionImpl) Closed() bool {
+	return a.closed
+}
+
+func (ConnectionImpl) Open() {}
+
+func NewConnection() Connection {
+	return &ConnectionImpl{}
 }

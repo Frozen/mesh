@@ -10,9 +10,11 @@ import (
 func TestRuntime(t *testing.T) {
 	var (
 		connIn  = &connectionMock{}
-		spawner = &connectionSpawnerMock{
-			timeout: 1 * time.Second,
-		}
+		spawner = NewConnectionSpawner(func() Connection {
+			return &connectionMock{
+				timeout: 5 * time.Second,
+			}
+		})
 	)
 	r := NewP2pRuntime(spawner)
 
@@ -53,4 +55,45 @@ func TestRuntime(t *testing.T) {
 	// Ensure all connections closed
 	require.True(t, connIn.Closed())
 	require.True(t, outgoingConn.Closed())
+}
+
+// 3 connections should hang for 1 second, not 3 seconds.
+func TestMultipleConnectionsSimultaneously(t *testing.T) {
+	now := time.Now()
+	var (
+		spawner = NewConnectionSpawner(func() Connection {
+			return &connectionMock{
+				timeout: 1 * time.Second,
+			}
+		})
+	)
+	r := NewP2pRuntime(spawner)
+
+	c1 := r.GetConnection(123)
+	c2 := r.GetConnection(123)
+	_ = r.GetConnection(123)
+
+	require.True(t, c1 == c2)
+
+	require.True(t, time.Now().Sub(now) < 2*time.Second)
+}
+
+// This code should work more than 2 seconds.
+func TestSequentialConnections(t *testing.T) {
+	now := time.Now()
+	var (
+		spawner = NewConnectionSpawner(func() Connection {
+			return &connectionMock{
+				timeout: 1 * time.Second,
+			}
+		})
+	)
+	r := NewP2pRuntime(spawner)
+
+	c1 := r.GetConnection(123)
+	c2 := r.GetConnection(321)
+
+	require.False(t, c1 == c2)
+
+	require.True(t, time.Now().Sub(now) > 2*time.Second)
 }

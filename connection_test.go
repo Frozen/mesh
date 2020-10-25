@@ -1,9 +1,13 @@
 package mesh
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 type connectionMock struct {
-	closed bool
+	closed  bool
+	timeout time.Duration
 }
 
 // Close connection.
@@ -14,6 +18,10 @@ func (a *connectionMock) Close() {
 // Returns `true` if connection closed.
 func (a *connectionMock) Closed() bool {
 	return a.closed
+}
+
+func (a connectionMock) Open() {
+	<-time.After(a.timeout)
 }
 
 // Just check it compiles.

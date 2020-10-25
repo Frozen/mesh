@@ -27,14 +27,25 @@ func NewP2pRuntime(spawner ConnectionSpawner) *P2pRuntime {
 
 // Returns `Connection` for ip address.
 func (a *P2pRuntime) GetConnection(ip ipAddress) Connection {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if conn, ok := a.ip2conn[ip]; ok {
+	if conn, ok := a.getConn(ip); ok {
 		return conn
 	}
-	connected := a.spawner.SpawnOutgoing(ip)
-	a.ip2conn[ip] = connected
-	return connected
+	conn := <-a.spawner.SpawnOutgoing(ip)
+	a.addConnection(ip, conn)
+	return conn
+}
+
+func (a *P2pRuntime) addConnection(ip ipAddress, conn Connection) {
+	a.mu.Lock()
+	a.ip2conn[ip] = conn
+	a.mu.Unlock()
+}
+
+func (a *P2pRuntime) getConn(ip ipAddress) (Connection, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	conn, ok := a.ip2conn[ip]
+	return conn, ok
 }
 
 // Called when new connection arrived.
